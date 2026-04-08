@@ -34,5 +34,10 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "G
     add_compile_options(-Wall -Wextra -Wpedantic -Werror -Wno-gnu-anonymous-struct -Wno-nested-anon-types)
 endif()
 
+# Ferramental de automação agressiva de garantia de testes do CMake Pipeline
+include(CTest)
+enable_testing()
+
 add_subdirectory(engine)
 add_subdirectory(sandbox)
+add_subdirectory(tests)
