@@ -1,67 +1,39 @@
 #include <canino/core/core.h>
 #include <canino/core/memory_arena.h>
+#include <canino/platform/window.h>
 #include <iostream>
-#include <chrono>
-
-struct Transform {
-    float position[3];
-    float rotation[4];
-    float scale[3];
-};
 
 int main() {
-    std::cout << "[Sandbox] Iniciando o Benchmark de Memoria DOD..." << std::endl;
-    // canino::Initialize(); // ignorando a inicializacao default pro benchmark
+    std::cout << "[Sandbox] Iniciando Engine DOD e forjando Kernel Hardware Window..." << std::endl;
 
-    const size_t ALLOCATION_COUNT = 1000000; // 1 milhao de alocacoes
-    
-    // --- Teste 1: Padrão C++ 'new/delete' ---
-    {
-        std::cout << "\n--- Run: Standard OS Heap (new/delete) ---" << std::endl;
-        auto start = std::chrono::high_resolution_clock::now();
-        
-        Transform** transforms = new Transform*[ALLOCATION_COUNT];
-        for (size_t i = 0; i < ALLOCATION_COUNT; ++i) {
-            transforms[i] = new Transform();
-            transforms[i]->position[0] = 1.0f; // workload fantasma
-        }
-        
-        // Simulação bruta de destruição temporal
-        for (size_t i = 0; i < ALLOCATION_COUNT; ++i) {
-            delete transforms[i];
-        }
-        delete[] transforms;
+    // Despacho de Config purista C-Style struct, O(1) Init
+    canino::WindowDesc desc = {};
+    desc.Title = "Canino Engine Executable (C++20 MSVC DOD-Strict)";
+    desc.Width = 1280;
+    desc.Height = 720;
 
-        auto end = std::chrono::high_resolution_clock::now();
-        std::cout << "Tempo HEAP: " 
-                  << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() 
-                  << " ms" << std::endl;
+    // Janela sendo cuspida puramente atrás da cortina de pointer Opaque
+    canino::Window* window = canino::PlatformCreateWindow(desc);
+
+    if (!window) {
+        std::cerr << "Falha critica e abortando sub-sistema de OS." << std::endl;
+        return -1;
     }
 
-    // --- Teste 2: Memory Arena Data-Oriented ---
-    {
-        std::cout << "\n--- Run: Canino Linear Memory Arena ---" << std::endl;
-        auto start = std::chrono::high_resolution_clock::now();
-        
-        canino::MemoryArena arena;
-        arena.InitializeHeap(sizeof(Transform) * ALLOCATION_COUNT + 1024); // Somente 1 System Call O.S.
+    std::cout << "[Sandbox] Instancia renderizada. Ingressando no Real-time Infinite Loop O(1).\nPressione Alt+F4 ou o X Nativo paramatar processo" << std::endl;
 
-        for (size_t i = 0; i < ALLOCATION_COUNT; ++i) {
-            // Empurra pointer O(1) de forma alinhada
-            Transform* t = canino::PushStruct<Transform>(arena);
-            t->position[0] = 1.0f; // workload
-        }
+    // O Loop imortal que ditará os milhares de quadros por milissegundo de nossa Engine
+    while (!canino::PlatformWindowShouldClose(window)) {
         
-        // Limpeza maciça O(1)
-        arena.Clear();
-        arena.DestroyHeap();
+        // Ponto de respiro com Hardware nativo p/ updates
+        canino::PlatformPumpMessages(window);
 
-        auto end = std::chrono::high_resolution_clock::now();
-        std::cout << "Tempo ARENA: " 
-                  << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() 
-                  << " ms" << std::endl;
+        // [TODO RENDER LOOP e SIMULATION]
+
     }
 
-    std::cout << "\nBenchmark concluido com exito." << std::endl;
+    std::cout << "[Sandbox] Evento de Morte recebido pelo Sistema Operacional. Eliminando caches..." << std::endl;
+    canino::PlatformDestroyWindow(window);
+
     return 0;
 }
