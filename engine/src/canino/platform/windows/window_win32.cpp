@@ -177,5 +177,10 @@ void PlatformUpdateInputState(Window* window) {
     window->State.MouseDeltaY = 0;
 }
 
+void* PlatformGetNativeWindowHandle(Window* window) {
+    if (!window) return nullptr;
+    return (void*)window->OSState.Hwnd;
+}
+
 }
 #endif
