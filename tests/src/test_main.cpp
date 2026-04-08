@@ -11,6 +11,7 @@ int main() {
     
     if (!RunMemoryTests()) success = false;
     if (!RunPlatformTests()) success = false;
+    if (!RunInputTests()) success = false;
 
     if (success) {
         std::cout << "\n\033[32m[PASSOU]\033[0m Todos os sistemas e endereços da Canino Engine testados com sucesso absoluto." << std::endl;

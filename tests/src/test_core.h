@@ -24,3 +24,4 @@
 // Prototipos das rotinas do DOD Test
 bool RunMemoryTests();
 bool RunPlatformTests();
+bool RunInputTests();

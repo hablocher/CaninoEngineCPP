@@ -28,8 +28,25 @@ int main() {
         // Ponto de respiro com Hardware nativo p/ updates
         canino::PlatformPumpMessages(window);
 
-        // [TODO RENDER LOOP e SIMULATION]
+        // Fetch do estado
+        const canino::InputState* state = canino::PlatformGetInputState(window);
+        
+        if (canino::IsKeyPressed(state, canino::CANINO_KEY_SPACE)) {
+            std::cout << "[Input] PULO DETECTADO (Espaco)." << std::endl;
+        }
+        if (canino::IsKeyDown(state, canino::CANINO_KEY_W)) {
+            std::cout << "[Input] W held." << std::endl;
+        }
+        if (canino::IsMouseButtonPressed(state, canino::CANINO_MOUSE_LEFT)) {
+            std::cout << "[Input] PEW! (Click Esq)." << std::endl;
+        }
+        if (canino::IsKeyPressed(state, canino::CANINO_KEY_ESCAPE)) {
+            std::cout << "[Input] Usuario esmagou ESCAPE, saindo gracefully." << std::endl;
+            break; // Quebra o loop inves de Force Kill
+        }
 
+        // Fim do frame, limpa e atualiza os bit arrays de Previous pro proximo ciclo
+        canino::PlatformUpdateInputState(window);
     }
 
     std::cout << "[Sandbox] Evento de Morte recebido pelo Sistema Operacional. Eliminando caches..." << std::endl;

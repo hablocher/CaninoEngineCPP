@@ -2,6 +2,7 @@ add_executable(CaninoTests
     src/test_main.cpp 
     src/test_memory.cpp 
     src/test_platform.cpp
+    src/test_input.cpp
 )
 
 # Precisamos do pacote base da engine p/ testar e das pastas de includes publicos 

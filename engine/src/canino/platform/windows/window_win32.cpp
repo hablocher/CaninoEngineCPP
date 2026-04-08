@@ -5,6 +5,7 @@
 // As macros WIN32_LEAN_AND_MEAN e NOMINMAX já são injetadas pelo CMake via command line
 #include <windows.h>
 #include <cstdlib>
+#include <cstring>
 
 namespace canino {
 
@@ -20,6 +21,7 @@ struct Window {
     bool ShouldClose;
     unsigned int Width;
     unsigned int Height;
+    InputState State; // Nosso pacote contíguo de Inputs OS
 };
 
 // Callback oficial de loop do Sistema Win32 interceptado pra dentro da nossa Opaque
@@ -42,6 +44,40 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 window->ShouldClose = true;
                 return 0; // Previne liberação bruta pra encerrar nosso GameLoop elegante
             }
+            // Capture Keyboard
+            case WM_KEYDOWN:
+            case WM_KEYUP: {
+                bool isDown = (uMsg == WM_KEYDOWN);
+                int vkCode = (int)wParam;
+                // Tratamento especial unificando a Virtual key do windows na nossa Opaque struct
+                if (vkCode == VK_ESCAPE) vkCode = CANINO_KEY_ESCAPE; // Overwrite
+                if (vkCode < 512) {
+                    window->State.CurrentKeys[vkCode] = isDown;
+                }
+                return 0;
+            }
+            // Capture Mouse
+            case WM_MOUSEMOVE: {
+                int x = LOWORD(lParam);
+                int y = HIWORD(lParam);
+                window->State.MouseDeltaX = x - window->State.MouseX;
+                window->State.MouseDeltaY = y - window->State.MouseY;
+                window->State.MouseX = x;
+                window->State.MouseY = y;
+                return 0;
+            }
+            case WM_LBUTTONDOWN:
+            case WM_LBUTTONUP: {
+                bool isDown = (uMsg == WM_LBUTTONDOWN);
+                window->State.CurrentMouse[CANINO_MOUSE_LEFT] = isDown;
+                return 0;
+            }
+            case WM_RBUTTONDOWN:
+            case WM_RBUTTONUP: {
+                bool isDown = (uMsg == WM_RBUTTONDOWN);
+                window->State.CurrentMouse[CANINO_MOUSE_RIGHT] = isDown;
+                return 0;
+            }
         }
     }
 
@@ -52,6 +88,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 Window* PlatformCreateWindow(const WindowDesc& config) {
     // Aloca a Opaque na Heap pra persistir enquanto vive (usaremos nossa Arena futuramente se precisarmos)
     Window* window = (Window*)std::malloc(sizeof(Window));
+    // Zero init do array gigante pra n crasharmos hardware ram leaks lixosos
+    std::memset(window, 0, sizeof(Window)); 
+    
     window->ShouldClose = false;
     window->Width = config.Width;
     window->Height = config.Height;
@@ -121,6 +160,21 @@ void PlatformPumpMessages(Window* window) {
 bool PlatformWindowShouldClose(Window* window) {
     if (!window) return true;
     return window->ShouldClose;
+}
+
+const InputState* PlatformGetInputState(Window* window) {
+    if (!window) return nullptr;
+    return &window->State;
+}
+
+void PlatformUpdateInputState(Window* window) {
+    if (!window) return;
+    
+    // Transferencia massiva hiper veloz dos conteudos bit a bit pros Previous (Sync End Frame)
+    for (int i = 0; i < 512; ++i) window->State.PreviousKeys[i] = window->State.CurrentKeys[i];
+    for (int i = 0; i < 3; ++i) window->State.PreviousMouse[i] = window->State.CurrentMouse[i];
+    window->State.MouseDeltaX = 0;
+    window->State.MouseDeltaY = 0;
 }
 
 }

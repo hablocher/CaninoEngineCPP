@@ -10,6 +10,8 @@ target_sources(CaninoEngine PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/canino/core/memory_pool.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/canino/core/memory_pool.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/canino/platform/window.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/canino/platform/input.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/canino/platform/input.cpp
 )
 
 # Adicionamos dinamicamente as classes de Platform dependendo do host/target do compiler

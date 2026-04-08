@@ -1,5 +1,6 @@
 #pragma once
 #include <canino/core/core.h>
+#include <canino/platform/input.h>
 
 namespace canino {
     // Init Setup minimalista Data-Oriented
@@ -21,4 +22,10 @@ namespace canino {
     
     // Inqueri rapidamente memória alocada, sem depender da Poll pump iterável
     CANINO_API bool PlatformWindowShouldClose(Window* window);
+
+    // Extraction segura DOD do state contíguo injetado na janela sem Classes 
+    CANINO_API const InputState* PlatformGetInputState(Window* window);
+    
+    // Invocado no fim do frame puramente pra bater os Prev = Current Arrays.
+    CANINO_API void PlatformUpdateInputState(Window* window);
 }
