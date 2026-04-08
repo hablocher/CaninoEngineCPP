@@ -1,0 +1,9 @@
+{
+	"InstallScripts" : 
+	[
+		"E:/Code/CPP/CaninoEngine/build/cmake_install.cmake",
+		"E:/Code/CPP/CaninoEngine/build/engine/cmake_install.cmake",
+		"E:/Code/CPP/CaninoEngine/build/sandbox/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

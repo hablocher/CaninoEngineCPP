@@ -1,0 +1,10 @@
+^E:\CODE\CPP\CANINOENGINE\BUILD\CMAKEFILES\E0838C36B220368F2B6E9F457F3AAEE8\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SE:/Code/CPP/CaninoEngine -BE:/Code/CPP/CaninoEngine/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file E:/Code/CPP/CaninoEngine/build/CaninoEngine.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

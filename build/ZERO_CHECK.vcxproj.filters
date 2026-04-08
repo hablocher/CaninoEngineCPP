@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="E:\Code\CPP\CaninoEngine\build\CMakeFiles\e0838c36b220368f2b6e9f457f3aaee8\generate.stamp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{D50E80A4-BD34-32FB-975C-3857C6379660}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
