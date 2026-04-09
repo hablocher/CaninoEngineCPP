@@ -15,6 +15,8 @@ target_sources(CaninoEngine PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/canino/render/rhi.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/canino/math/math_types.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/canino/math/math_ops.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/canino/core/job_system.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/canino/core/job_system.cpp
 )
 
 # Adicionamos dinamicamente as classes de Platform dependendo do host/target do compiler
