@@ -1,5 +1,6 @@
 #pragma once
 #include <canino/core/core.h>
+#include <canino/math/math_types.h>
 
 namespace canino {
     
@@ -20,5 +21,9 @@ namespace canino {
         CANINO_API void Clear();
 
         CANINO_API void DrawQuad(float x, float y, float w, float h, float r, float g, float b);
+
+        // Primitivas Tridimensionais Fotorealistas
+        CANINO_API void* CreateTexture(const char* filepath, int* outWidth = nullptr, int* outHeight = nullptr);
+        CANINO_API void DrawCube(const Mat4& transformMVP, void* texturePtr);
     }
 }

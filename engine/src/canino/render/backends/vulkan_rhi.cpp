@@ -12,6 +12,8 @@ namespace canino {
     static void Vulkan_SetClearColor(float, float, float, float) {}
     static void Vulkan_Clear() {}
     static void Vulkan_DrawQuad(float, float, float, float, float, float, float) {}
+    static void* Vulkan_CreateTexture(const char*, int*, int*) { return nullptr; }
+    static void Vulkan_DrawCube(const Mat4&, void*) {}
 
     RHI_VTable GetBackend_Vulkan() {
         RHI_VTable table = {};
@@ -22,6 +24,8 @@ namespace canino {
         table.SetClearColor = Vulkan_SetClearColor;
         table.Clear = Vulkan_Clear;
         table.DrawQuad = Vulkan_DrawQuad;
+        table.CreateTexture = Vulkan_CreateTexture;
+        table.DrawCube = Vulkan_DrawCube;
         return table;
     }
 }

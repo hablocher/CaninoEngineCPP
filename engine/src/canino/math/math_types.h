@@ -20,7 +20,7 @@ namespace canino {
     // Matrizes para Render Hardware Interface (4x4 Colunas, 64-bytes alinhadas em L1 cache lines)
     struct alignas(16) Mat4 {
         union {
-            float elements[4][4];
+            float m[4][4];
             __m128 cols[4];
         };
     };

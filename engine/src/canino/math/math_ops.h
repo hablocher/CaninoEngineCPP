@@ -1,5 +1,6 @@
 #pragma once
 #include <canino/math/math_types.h>
+#include <math.h>
 
 namespace canino {
 namespace math {
@@ -39,6 +40,78 @@ namespace math {
         
         // Dispara de volta do Cópula para Memoria (Converter Scalar System)
         return _mm_cvtss_f32(sums);
+    }
+
+    // Mutações matriciais nulas
+    inline Mat4 Mat4Identity() {
+        Mat4 res = {0};
+        res.m[0][0] = 1.0f; res.m[1][1] = 1.0f;
+        res.m[2][2] = 1.0f; res.m[3][3] = 1.0f;
+        return res;
+    }
+
+    // Pipeline Algebra linear de Rotação Eixo X
+    inline Mat4 Mat4RotateX(float angleRad) {
+        Mat4 res = Mat4Identity();
+        float c = cosf(angleRad);
+        float s = sinf(angleRad);
+        res.m[1][1] = c;  res.m[1][2] = s;
+        res.m[2][1] = -s; res.m[2][2] = c;
+        return res;
+    }
+
+    // Pipeline Algebra linear de Rotação Eixo Y
+    inline Mat4 Mat4RotateY(float angleRad) {
+        Mat4 res = Mat4Identity();
+        float c = cosf(angleRad);
+        float s = sinf(angleRad);
+        res.m[0][0] = c;  res.m[0][2] = -s;
+        res.m[2][0] = s;  res.m[2][2] = c;
+        return res;
+    }
+
+    // Multiplicação Massiva Matricial CPU
+    inline Mat4 Mat4Multiply(const Mat4& a, const Mat4& b) {
+        Mat4 res = {0};
+        for(int i = 0; i < 4; ++i) {
+            for(int j = 0; j < 4; ++j) {
+                res.m[i][j] = a.m[i][0] * b.m[0][j] +
+                              a.m[i][1] * b.m[1][j] +
+                              a.m[i][2] * b.m[2][j] +
+                              a.m[i][3] * b.m[3][j];
+            }
+        }
+        return res;
+    }
+
+    // Projeção Frustum (Converte Visão Lente pra NDC Shader)
+    inline Mat4 Mat4Perspective(float fovRad, float aspect, float nearZ, float farZ) {
+        Mat4 res = {0};
+        float f = 1.0f / tanf(fovRad / 2.0f);
+        res.m[0][0] = f / aspect;
+        res.m[1][1] = f;
+        res.m[2][2] = farZ / (farZ - nearZ);
+        res.m[2][3] = 1.0f; // Salva W pra divisao perspetiva pela Placa
+        res.m[3][2] = (-(nearZ * farZ)) / (farZ - nearZ);
+        return res;
+    }
+
+    // Translação
+    inline Mat4 Mat4Translate(float x, float y, float z) {
+        Mat4 res = Mat4Identity();
+        res.m[3][0] = x;
+        res.m[3][1] = y;
+        res.m[3][2] = z;
+        return res;
+    }
+
+    // Escala
+    inline Mat4 Mat4Scale(float x, float y, float z) {
+        Mat4 res = Mat4Identity();
+        res.m[0][0] = x;
+        res.m[1][1] = y;
+        res.m[2][2] = z;
+        return res;
     }
 
 }

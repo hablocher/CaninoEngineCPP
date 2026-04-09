@@ -62,5 +62,14 @@ namespace canino {
         void DrawQuad(float x, float y, float w, float h, float r, float g, float b) {
             if (s_GlobalVTable.DrawQuad) s_GlobalVTable.DrawQuad(x, y, w, h, r, g, b);
         }
+
+        void* CreateTexture(const char* filepath, int* width, int* height) {
+            if (s_GlobalVTable.CreateTexture) return s_GlobalVTable.CreateTexture(filepath, width, height);
+            return nullptr;
+        }
+
+        void DrawCube(const Mat4& transform, void* texture) {
+            if (s_GlobalVTable.DrawCube) s_GlobalVTable.DrawCube(transform, texture);
+        }
     }
 }

@@ -94,6 +94,9 @@ static void OGL_DrawQuad(float x, float y, float w, float h, float r, float g, f
 #endif
 }
 
+static void* OGL_CreateTexture(const char*, int*, int*) { return nullptr; }
+static void OGL_DrawCube(const Mat4&, void*) {}
+
 RHI_VTable GetBackend_OpenGL() {
     RHI_VTable table = {};
     table.Init = OGL_Initialize;
@@ -103,6 +106,8 @@ RHI_VTable GetBackend_OpenGL() {
     table.SetClearColor = OGL_SetClearColor;
     table.Clear = OGL_Clear;
     table.DrawQuad = OGL_DrawQuad;
+    table.CreateTexture = OGL_CreateTexture;
+    table.DrawCube = OGL_DrawCube;
     return table;
 }
 
