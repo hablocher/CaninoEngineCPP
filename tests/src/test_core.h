@@ -25,3 +25,4 @@
 bool RunMemoryTests();
 bool RunPlatformTests();
 bool RunInputTests();
+bool RunMathTests();
