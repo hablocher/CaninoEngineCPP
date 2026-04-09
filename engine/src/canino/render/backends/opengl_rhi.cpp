@@ -1,4 +1,4 @@
-#include <canino/render/rhi.h>
+#include <canino/render/rhi_backend.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -17,7 +17,7 @@ struct OpenGLContext {
 // Como jogos usam comumente Single-Window / Single-Context de placa inteira, cache unico
 static OpenGLContext* s_Context = nullptr; 
 
-bool RHI_Initialize(void* nativeWindowHandle) {
+static bool OGL_Initialize(void* nativeWindowHandle) {
     if (s_Context) return true; // idempotente
 
     // Alocar buffer
@@ -51,7 +51,7 @@ bool RHI_Initialize(void* nativeWindowHandle) {
     return true;
 }
 
-void RHI_Shutdown() {
+static void OGL_Shutdown() {
     if (s_Context) {
         wglMakeCurrent(nullptr, nullptr);
         if (s_Context->RenderContext) wglDeleteContext(s_Context->RenderContext);
@@ -62,11 +62,11 @@ void RHI_Shutdown() {
     }
 }
 
-void RHI_BeginFrame() {
+static void OGL_BeginFrame() {
     // Pipeline preparatório nulo pro BasicGL
 }
 
-void RHI_EndFrame() {
+static void OGL_EndFrame() {
     // Esmurrar a GDI com SWAP HW Pointers descarregando FrontBuffer!
     if (s_Context && s_Context->DeviceContext) {
         SwapBuffers(s_Context->DeviceContext);
@@ -74,17 +74,14 @@ void RHI_EndFrame() {
 }
 
 // Implementacao do Front end submissivel. Aqui é puro OpenGL nativo de Kernel C function call.
-namespace RenderCommand {
-    void SetClearColor(float r, float g, float b, float a) {
+    static void OGL_SetClearColor(float r, float g, float b, float a) {
         glClearColor(r, g, b, a);
     }
 
-    void Clear() {
+    static void OGL_Clear() {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }
-}
-
-void RenderCommand::DrawQuad(float x, float y, float w, float h, float r, float g, float b) {
+static void OGL_DrawQuad(float x, float y, float w, float h, float r, float g, float b) {
 #ifdef _WIN32
     // C-Style imemdiate Mode GL 1.1 Embutido na API Nativa pra Sandboxing sujo via Hardware
     glColor3f(r, g, b);
@@ -95,6 +92,18 @@ void RenderCommand::DrawQuad(float x, float y, float w, float h, float r, float 
         glVertex2f(x, y + h);
     glEnd();
 #endif
+}
+
+RHI_VTable GetBackend_OpenGL() {
+    RHI_VTable table = {};
+    table.Init = OGL_Initialize;
+    table.Shutdown = OGL_Shutdown;
+    table.BeginFrame = OGL_BeginFrame;
+    table.EndFrame = OGL_EndFrame;
+    table.SetClearColor = OGL_SetClearColor;
+    table.Clear = OGL_Clear;
+    table.DrawQuad = OGL_DrawQuad;
+    return table;
 }
 
 }

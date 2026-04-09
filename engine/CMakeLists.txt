@@ -21,16 +21,23 @@ target_sources(CaninoEngine PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/canino/ecs/component_array.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/canino/ecs/registry.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/canino/ecs/registry.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/canino/core/config_parser.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/canino/core/config_parser.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/canino/render/rhi_backend.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/canino/render/rhi.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/canino/render/backends/opengl_rhi.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/canino/render/backends/dx11_rhi.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/canino/render/backends/dx12_rhi.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/canino/render/backends/vulkan_rhi.cpp
 )
 
 # Adicionamos dinamicamente as classes de Platform dependendo do host/target do compiler
 if(WIN32)
     target_sources(CaninoEngine PRIVATE 
         ${CMAKE_CURRENT_SOURCE_DIR}/src/canino/platform/windows/window_win32.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/canino/render/opengl/opengl_rhi.cpp
     )
     # Win32 GDI Libs e Contextos Gráficos
-    target_link_libraries(CaninoEngine PRIVATE user32.lib gdi32.lib opengl32.lib)
+    target_link_libraries(CaninoEngine PRIVATE user32.lib gdi32.lib opengl32.lib d3d11.lib dxgi.lib)
 endif()
 
 # Diretório público base de includes (ex: para engolir "canino/core/core.h")
