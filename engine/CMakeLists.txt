@@ -37,7 +37,7 @@ if(WIN32)
         ${CMAKE_CURRENT_SOURCE_DIR}/src/canino/platform/windows/window_win32.cpp
     )
     # Win32 GDI Libs e Contextos Gráficos
-    target_link_libraries(CaninoEngine PRIVATE user32.lib gdi32.lib opengl32.lib d3d11.lib dxgi.lib)
+    target_link_libraries(CaninoEngine PRIVATE user32.lib gdi32.lib opengl32.lib d3d11.lib dxgi.lib d3dcompiler.lib)
 endif()
 
 # Diretório público base de includes (ex: para engolir "canino/core/core.h")
