@@ -14,6 +14,7 @@ namespace canino {
     static void DX12_DrawQuad(float, float, float, float, float, float, float) {}
     static void* DX12_CreateTexture(const char*, int*, int*) { return nullptr; }
     static void DX12_DrawCube(const Mat4&, void*) {}
+    static void DX12_DrawCubeSolid(const Mat4&, float, float, float) {}
 
     RHI_VTable GetBackend_DirectX12() {
         RHI_VTable table = {};
@@ -26,6 +27,7 @@ namespace canino {
         table.DrawQuad = DX12_DrawQuad;
         table.CreateTexture = DX12_CreateTexture;
         table.DrawCube = DX12_DrawCube;
+        table.DrawCubeSolid = DX12_DrawCubeSolid;
         return table;
     }
 }

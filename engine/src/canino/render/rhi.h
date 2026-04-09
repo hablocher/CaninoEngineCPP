@@ -25,5 +25,14 @@ namespace canino {
         // Primitivas Tridimensionais Fotorealistas
         CANINO_API void* CreateTexture(const char* filepath, int* outWidth = nullptr, int* outHeight = nullptr);
         CANINO_API void DrawCube(const Mat4& transformMVP, void* texturePtr);
+        CANINO_API void DrawCubeSolid(const Mat4& transformMVP, float r, float g, float b);
+
+        struct Vertex3D {
+            float pos[3];
+            float uv[2];
+        };
+        
+        CANINO_API void* CreateMesh(const Vertex3D* vertices, size_t vertexCount, const unsigned int* indices, size_t indexCount);
+        CANINO_API void DrawMesh(void* meshHandle, const Mat4& transformMVP, void* texturePtr);
     }
 }

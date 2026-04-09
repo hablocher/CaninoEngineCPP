@@ -29,6 +29,9 @@ namespace canino {
     // Invocado no fim do frame puramente pra bater os Prev = Current Arrays.
     CANINO_API void PlatformUpdateInputState(Window* window);
     
+    // FPS Features Win32
+    CANINO_API void PlatformLockCursor(Window* window, bool lock);
+    
     // Extrator restrito para Graphics Contexts acoplarem na Plataforma Fisica nativa (Void* Pointer)
     CANINO_API void* PlatformGetNativeWindowHandle(Window* window);
 }

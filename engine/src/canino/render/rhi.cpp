@@ -71,5 +71,18 @@ namespace canino {
         void DrawCube(const Mat4& transform, void* texture) {
             if (s_GlobalVTable.DrawCube) s_GlobalVTable.DrawCube(transform, texture);
         }
+
+        void DrawCubeSolid(const Mat4& transform, float r, float g, float b) {
+            if (s_GlobalVTable.DrawCubeSolid) s_GlobalVTable.DrawCubeSolid(transform, r, g, b);
+        }
+
+        void* CreateMesh(const Vertex3D* vertices, size_t vCount, const unsigned int* indices, size_t iCount) {
+            if (s_GlobalVTable.CreateMesh) return s_GlobalVTable.CreateMesh(vertices, vCount, indices, iCount);
+            return nullptr;
+        }
+
+        void DrawMesh(void* meshHandle, const Mat4& transform, void* texturePtr) {
+            if (s_GlobalVTable.DrawMesh) s_GlobalVTable.DrawMesh(meshHandle, transform, texturePtr);
+        }
     }
 }

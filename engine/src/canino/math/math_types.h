@@ -17,7 +17,7 @@ namespace canino {
         };
     };
 
-    // Matrizes para Render Hardware Interface (4x4 Colunas, 64-bytes alinhadas em L1 cache lines)
+    // Matriz de Transformação O(1) de Cache (4x4 Colunas, 64-bytes alinhadas em L1 cache lines)
     struct alignas(16) Mat4 {
         union {
             float m[4][4];

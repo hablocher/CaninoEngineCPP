@@ -96,6 +96,7 @@ static void OGL_DrawQuad(float x, float y, float w, float h, float r, float g, f
 
 static void* OGL_CreateTexture(const char*, int*, int*) { return nullptr; }
 static void OGL_DrawCube(const Mat4&, void*) {}
+static void OGL_DrawCubeSolid(const Mat4&, float, float, float) {}
 
 RHI_VTable GetBackend_OpenGL() {
     RHI_VTable table = {};
@@ -108,6 +109,7 @@ RHI_VTable GetBackend_OpenGL() {
     table.DrawQuad = OGL_DrawQuad;
     table.CreateTexture = OGL_CreateTexture;
     table.DrawCube = OGL_DrawCube;
+    table.DrawCubeSolid = OGL_DrawCubeSolid;
     return table;
 }
 

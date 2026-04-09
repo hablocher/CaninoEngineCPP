@@ -5,6 +5,7 @@
 #include <d3d11.h>
 #include <d3dcompiler.h>
 #include <iostream>
+#include <vector>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "../stb_image.h"
@@ -17,11 +18,8 @@ namespace canino {
 
     __declspec(align(16)) struct ConstantBufferData {
         Mat4 MVP;
-    };
-
-    struct Vertex3D {
-        float pos[3];
-        float uv[2];
+        float SolidColor[4];
+        int UseTexture[4];
     };
 
     struct DX11Context {
@@ -45,6 +43,15 @@ namespace canino {
         ID3D11RasterizerState* RasterizerState = nullptr;
 
         float ClearColor[4] = { 0.1f, 0.1f, 0.1f, 1.0f };
+
+        struct NativeMesh {
+            ID3D11Buffer* VertexBuffer = nullptr;
+            ID3D11Buffer* IndexBuffer = nullptr;
+            UINT IndexCount = 0;
+        };
+
+        std::vector<NativeMesh*> TrackedMeshes;
+        std::vector<ID3D11ShaderResourceView*> TrackedTextures;
     };
 
     static DX11Context* s_DX11Context = nullptr;
@@ -52,6 +59,8 @@ namespace canino {
     const char* g_ShaderSource3D = R"(
         cbuffer CBO : register(b0) {
             matrix MVP;
+            float4 SolidColor;
+            int4 UseTexture;
         };
 
         Texture2D t0 : register(t0);
@@ -75,7 +84,11 @@ namespace canino {
         }
 
         float4 PSMain(PS_IN input) : SV_TARGET {
-            return t0.Sample(s0, input.UV);
+            if (UseTexture.x == 1) {
+                return t0.Sample(s0, input.UV);
+            } else {
+                return SolidColor;
+            }
         }
     )";
 
@@ -149,7 +162,7 @@ namespace canino {
         vsBlob->Release(); psBlob->Release();
 
         // ======= CUBE VERTEX BUFFER (Geometria 3D Bruta) ========
-        Vertex3D cbVertices[] = {
+        RenderCommand::Vertex3D cbVertices[] = {
             // Front (Z = -0.5)
             {-0.5, -0.5, -0.5,  0, 1}, {-0.5,  0.5, -0.5,  0, 0}, { 0.5, -0.5, -0.5,  1, 1},
             { 0.5, -0.5, -0.5,  1, 1}, {-0.5,  0.5, -0.5,  0, 0}, { 0.5,  0.5, -0.5,  1, 0},
@@ -184,6 +197,7 @@ namespace canino {
         sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
         sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
         sampDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+        sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
         s_DX11Context->Device->CreateSamplerState(&sampDesc, &s_DX11Context->SamplerState);
 
         // ======= RASTERIZER & VIEWPORT ========
@@ -204,7 +218,7 @@ namespace canino {
         s_DX11Context->DeviceContext->PSSetShader(s_DX11Context->PixelShader, nullptr, 0);
         s_DX11Context->DeviceContext->PSSetSamplers(0, 1, &s_DX11Context->SamplerState);
 
-        UINT stride = sizeof(Vertex3D); UINT offset = 0;
+        UINT stride = sizeof(RenderCommand::Vertex3D); UINT offset = 0;
         s_DX11Context->DeviceContext->IASetVertexBuffers(0, 1, &s_DX11Context->VertexBuffer, &stride, &offset);
         s_DX11Context->DeviceContext->VSSetConstantBuffers(0, 1, &s_DX11Context->ConstantBuffer);
 
@@ -219,6 +233,9 @@ namespace canino {
         unsigned char* image = stbi_load(filepath, &tWidth, &tHeight, &tChannels, 4); // Forcar RGBA puro
         if (!image) { std::cout << "[RHI] Erro critico ao abrir Asset: " << filepath << std::endl; return nullptr; }
         
+        std::cout << "[STBI DEBUG] Lidos " << tWidth << "x" << tHeight << " com " << tChannels << " canais em " << filepath << std::endl;
+        std::cout << "[STBI DEBUG PIXELS] " << (int)image[0] << "," << (int)image[1] << "," << (int)image[2] << " - " << (int)image[3] << std::endl;
+
         if (outW) *outW = tWidth;
         if (outH) *outH = tHeight;
 
@@ -242,11 +259,24 @@ namespace canino {
         }
 
         stbi_image_free(image);
+        if (srv) {
+            s_DX11Context->TrackedTextures.push_back(srv);
+        }
         return srv;
     }
 
     static void DX11_Shutdown() {
         if (!s_DX11Context) return;
+        
+        for (auto srv : s_DX11Context->TrackedTextures) {
+            if (srv) srv->Release();
+        }
+        for (auto mesh : s_DX11Context->TrackedMeshes) {
+            if (mesh->VertexBuffer) mesh->VertexBuffer->Release();
+            if (mesh->IndexBuffer) mesh->IndexBuffer->Release();
+            delete mesh;
+        }
+
         // memory releases ignored form brevity
         delete s_DX11Context;
     }
@@ -286,6 +316,14 @@ namespace canino {
                     data->MVP.m[i][j] = mvp.m[j][i];
                 }
             }
+            if (textureId) {
+                data->UseTexture[0] = 1;
+                data->SolidColor[0] = 1.0f; data->SolidColor[1] = 0.0f; data->SolidColor[2] = 0.0f; data->SolidColor[3] = 1.0f; 
+            } else {
+                // Failsafe for missing textures to avoid black squares
+                data->UseTexture[0] = 0;
+                data->SolidColor[0] = 1.0f; data->SolidColor[1] = 0.0f; data->SolidColor[2] = 1.0f; data->SolidColor[3] = 1.0f; // Magenta de erro
+            }
 
             s_DX11Context->DeviceContext->Unmap(s_DX11Context->ConstantBuffer, 0);
         }
@@ -296,7 +334,105 @@ namespace canino {
             s_DX11Context->DeviceContext->PSSetShaderResources(0, 1, &srv);
         }
 
+        // Re-bind do Cubo Global (pois DrawMesh sobrescreve a state machine na frame anterior)
+        UINT stride = sizeof(RenderCommand::Vertex3D);
+        UINT offset = 0;
+        s_DX11Context->DeviceContext->IASetVertexBuffers(0, 1, &s_DX11Context->VertexBuffer, &stride, &offset);
+        s_DX11Context->DeviceContext->IASetIndexBuffer(nullptr, DXGI_FORMAT_R32_UINT, 0);
+
         s_DX11Context->DeviceContext->Draw(36, 0);
+    }
+
+    static void DX11_DrawCubeSolid(const Mat4& mvp, float r, float g, float b) {
+        if (!s_DX11Context) return;
+
+        D3D11_MAPPED_SUBRESOURCE mapped;
+        if (SUCCEEDED(s_DX11Context->DeviceContext->Map(s_DX11Context->ConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped))) {
+            ConstantBufferData* data = (ConstantBufferData*)mapped.pData;
+            for(int i=0; i<4; ++i) {
+                for(int j=0; j<4; ++j) {
+                    data->MVP.m[i][j] = mvp.m[j][i];
+                }
+            }
+            data->SolidColor[0] = r; data->SolidColor[1] = g; data->SolidColor[2] = b; data->SolidColor[3] = 1.0f;
+            data->UseTexture[0] = 0;
+            s_DX11Context->DeviceContext->Unmap(s_DX11Context->ConstantBuffer, 0);
+        }
+
+        // Re-bind do Cubo Global
+        UINT stride = sizeof(RenderCommand::Vertex3D);
+        UINT offset = 0;
+        s_DX11Context->DeviceContext->IASetVertexBuffers(0, 1, &s_DX11Context->VertexBuffer, &stride, &offset);
+        s_DX11Context->DeviceContext->IASetIndexBuffer(nullptr, DXGI_FORMAT_R32_UINT, 0);
+
+        s_DX11Context->DeviceContext->Draw(36, 0);
+    }
+
+    static void* DX11_CreateMesh(const RenderCommand::Vertex3D* vertices, size_t vCount, const unsigned int* indices, size_t iCount) {
+        if (!s_DX11Context) return nullptr;
+
+        DX11Context::NativeMesh* mesh = new DX11Context::NativeMesh();
+        mesh->IndexCount = (UINT)iCount;
+
+        // --- Vertex Buffer ---
+        D3D11_BUFFER_DESC vDesc = {};
+        vDesc.Usage = D3D11_USAGE_DEFAULT;
+        vDesc.ByteWidth = sizeof(RenderCommand::Vertex3D) * (UINT)vCount;
+        vDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+        
+        D3D11_SUBRESOURCE_DATA vData = {};
+        vData.pSysMem = vertices;
+        s_DX11Context->Device->CreateBuffer(&vDesc, &vData, &mesh->VertexBuffer);
+
+        // --- Index Buffer ---
+        D3D11_BUFFER_DESC iDesc = {};
+        iDesc.Usage = D3D11_USAGE_DEFAULT;
+        iDesc.ByteWidth = sizeof(unsigned int) * (UINT)iCount;
+        iDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+        
+        D3D11_SUBRESOURCE_DATA iData = {};
+        iData.pSysMem = indices;
+        s_DX11Context->Device->CreateBuffer(&iDesc, &iData, &mesh->IndexBuffer);
+
+        s_DX11Context->TrackedMeshes.push_back(mesh);
+        return mesh;
+    }
+
+    static void DX11_DrawMesh(void* meshHandle, const Mat4& mvp, void* textureId) {
+        if (!s_DX11Context || !meshHandle) return;
+        DX11Context::NativeMesh* mesh = (DX11Context::NativeMesh*)meshHandle;
+
+        D3D11_MAPPED_SUBRESOURCE mapped;
+        if (SUCCEEDED(s_DX11Context->DeviceContext->Map(s_DX11Context->ConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped))) {
+            ConstantBufferData* data = (ConstantBufferData*)mapped.pData;
+            for(int i=0; i<4; ++i) {
+                for(int j=0; j<4; ++j) {
+                    data->MVP.m[i][j] = mvp.m[j][i];
+                }
+            }
+            if (textureId) {
+                data->UseTexture[0] = 1;
+                // Preenche cor vermelha choque pro caso da Shader falhar o IF
+                data->SolidColor[0] = 1.0f; data->SolidColor[1] = 0.0f; data->SolidColor[2] = 0.0f; data->SolidColor[3] = 1.0f; 
+            } else {
+                data->SolidColor[0] = 0.5f; data->SolidColor[1] = 0.5f; data->SolidColor[2] = 0.5f; data->SolidColor[3] = 1.0f;
+                data->UseTexture[0] = 0;
+            }
+            s_DX11Context->DeviceContext->Unmap(s_DX11Context->ConstantBuffer, 0);
+        }
+
+        if (textureId) {
+            ID3D11ShaderResourceView* srv = (ID3D11ShaderResourceView*)textureId;
+            s_DX11Context->DeviceContext->PSSetShaderResources(0, 1, &srv);
+        }
+
+        // BIND Mesh Buffers e Draw Indexed
+        UINT stride = sizeof(RenderCommand::Vertex3D);
+        UINT offset = 0;
+        s_DX11Context->DeviceContext->IASetVertexBuffers(0, 1, &mesh->VertexBuffer, &stride, &offset);
+        s_DX11Context->DeviceContext->IASetIndexBuffer(mesh->IndexBuffer, DXGI_FORMAT_R32_UINT, 0);
+        
+        s_DX11Context->DeviceContext->DrawIndexed(mesh->IndexCount, 0, 0);
     }
 
     RHI_VTable GetBackend_DirectX11() {
@@ -304,6 +440,9 @@ namespace canino {
         table.Init = DX11_Init; table.Shutdown = DX11_Shutdown; table.BeginFrame = DX11_BeginFrame;
         table.EndFrame = DX11_EndFrame; table.SetClearColor = DX11_SetClearColor; table.Clear = DX11_Clear;
         table.DrawQuad = DX11_DrawQuad; table.CreateTexture = DX11_CreateTexture; table.DrawCube = DX11_DrawCube;
+        table.DrawCubeSolid = DX11_DrawCubeSolid;
+        table.CreateMesh = DX11_CreateMesh;
+        table.DrawMesh = DX11_DrawMesh;
         return table;
     }
 }

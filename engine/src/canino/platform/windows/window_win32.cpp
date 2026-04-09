@@ -21,6 +21,7 @@ struct Window {
     bool ShouldClose;
     unsigned int Width;
     unsigned int Height;
+    bool IsCursorLocked;
     InputState State; // Nosso pacote contíguo de Inputs OS
 };
 
@@ -60,8 +61,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             case WM_MOUSEMOVE: {
                 int x = LOWORD(lParam);
                 int y = HIWORD(lParam);
-                window->State.MouseDeltaX = x - window->State.MouseX;
-                window->State.MouseDeltaY = y - window->State.MouseY;
+                window->State.MouseDeltaX += (x - window->State.MouseX);
+                window->State.MouseDeltaY += (y - window->State.MouseY);
                 window->State.MouseX = x;
                 window->State.MouseY = y;
                 return 0;
@@ -175,6 +176,25 @@ void PlatformUpdateInputState(Window* window) {
     for (int i = 0; i < 3; ++i) window->State.PreviousMouse[i] = window->State.CurrentMouse[i];
     window->State.MouseDeltaX = 0;
     window->State.MouseDeltaY = 0;
+
+    // Se estiver locked, chutar o cursor violentamente pro meio da area Cliente
+    if (window->IsCursorLocked && window->OSState.Hwnd) {
+        RECT rect;
+        GetClientRect(window->OSState.Hwnd, &rect);
+        POINT center = { (rect.right - rect.left) / 2, (rect.bottom - rect.top) / 2 };
+        ClientToScreen(window->OSState.Hwnd, &center); // Win32 set position precisa da coordenata total do monitor
+        SetCursorPos(center.x, center.y);
+        
+        // Mutação silenciosa pra evitar Delta recursivo do Windows detectando "falso mouse-move"
+        window->State.MouseX = (rect.right - rect.left) / 2;
+        window->State.MouseY = (rect.bottom - rect.top) / 2;
+    }
+}
+
+void PlatformLockCursor(Window* window, bool lock) {
+    if (!window) return;
+    window->IsCursorLocked = lock;
+    ShowCursor(!lock);
 }
 
 void* PlatformGetNativeWindowHandle(Window* window) {

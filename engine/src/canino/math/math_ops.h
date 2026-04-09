@@ -108,9 +108,45 @@ namespace math {
     // Escala
     inline Mat4 Mat4Scale(float x, float y, float z) {
         Mat4 res = Mat4Identity();
-        res.m[0][0] = x;
-        res.m[1][1] = y;
-        res.m[2][2] = z;
+        res.m[0][0] = x; res.m[1][1] = y; res.m[2][2] = z;
+        return res;
+    }
+
+    // ----------------------------------------------------
+    // FPS VECTOR MATH (C-Style)
+    // ----------------------------------------------------
+    inline Vec3 Vec3Add(const Vec3& a, const Vec3& b) { return {a.x + b.x, a.y + b.y, a.z + b.z}; }
+    inline Vec3 Vec3Sub(const Vec3& a, const Vec3& b) { return {a.x - b.x, a.y - b.y, a.z - b.z}; }
+    inline Vec3 Vec3Mul(const Vec3& a, float s) { return {a.x * s, a.y * s, a.z * s}; }
+    inline float Vec3Dot(const Vec3& a, const Vec3& b) { return a.x*b.x + a.y*b.y + a.z*b.z; }
+    
+    inline Vec3 Vec3Cross(const Vec3& a, const Vec3& b) {
+        return {
+            a.y * b.z - a.z * b.y,
+            a.z * b.x - a.x * b.z,
+            a.x * b.y - a.y * b.x
+        };
+    }
+    
+    inline float Vec3Length(const Vec3& a) { return sqrtf(Vec3Dot(a, a)); }
+    
+    inline Vec3 Vec3Normalize(const Vec3& a) {
+        float l = Vec3Length(a);
+        if (l == 0.0f) return {0,0,0};
+        return {a.x/l, a.y/l, a.z/l};
+    }
+
+    // Pipeline Quake/Doom FPS View LookAt Left-Handed
+    inline Mat4 Mat4LookAt(const Vec3& eye, const Vec3& forward, const Vec3& up) {
+        Vec3 zAxis = Vec3Normalize(forward);
+        Vec3 xAxis = Vec3Normalize(Vec3Cross(up, zAxis));
+        Vec3 yAxis = Vec3Cross(zAxis, xAxis);
+
+        Mat4 res = Mat4Identity();
+        // Matrix View Reversa pra Rotacionar o Cenário contra o Jogador (Row-Major memory layout)
+        res.m[0][0] = xAxis.x; res.m[1][0] = xAxis.y; res.m[2][0] = xAxis.z; res.m[3][0] = -Vec3Dot(xAxis, eye);
+        res.m[0][1] = yAxis.x; res.m[1][1] = yAxis.y; res.m[2][1] = yAxis.z; res.m[3][1] = -Vec3Dot(yAxis, eye);
+        res.m[0][2] = zAxis.x; res.m[1][2] = zAxis.y; res.m[2][2] = zAxis.z; res.m[3][2] = -Vec3Dot(zAxis, eye);
         return res;
     }
 

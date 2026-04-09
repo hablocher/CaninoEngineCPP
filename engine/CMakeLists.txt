@@ -29,6 +29,7 @@ target_sources(CaninoEngine PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/canino/render/backends/dx11_rhi.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/canino/render/backends/dx12_rhi.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/canino/render/backends/vulkan_rhi.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/canino/render/mesh_loader.cpp
 )
 
 # Adicionamos dinamicamente as classes de Platform dependendo do host/target do compiler
