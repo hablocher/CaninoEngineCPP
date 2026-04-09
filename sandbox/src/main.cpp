@@ -2,7 +2,13 @@
 #include <canino/core/memory_arena.h>
 #include <canino/platform/window.h>
 #include <canino/render/rhi.h>
+#include <canino/ecs/registry.h>
+#include <canino/math/math_ops.h>
 #include <iostream>
+
+struct CameraTarget {
+    float r, g, b;
+};
 
 int main() {
     std::cout << "[Sandbox] Iniciando Engine DOD e forjando Kernel Hardware Window..." << std::endl;
@@ -24,7 +30,11 @@ int main() {
 
     std::cout << "[Sandbox] Render Hardware Interface Ativa. Real-time Infinity Loop inicializado." << std::endl;
 
-    float r = 0.1f, g = 0.2f, b = 0.4f;
+    // Criando a Galaxia Principal de Gerenciamento Estrito DOD
+    canino::Registry registry;
+    
+    canino::Entity player = registry.CreateEntity();
+    registry.AddComponent<CameraTarget>(player, { 0.1f, 0.2f, 0.4f });
 
     // O Loop imortal que ditará os milhares de quadros por milissegundo de nossa Engine
     while (!canino::PlatformWindowShouldClose(window)) {
@@ -35,20 +45,25 @@ int main() {
         // Submissoes passivas puramente baseadas em estado pro Graphic Hardware
         const canino::InputState* state = canino::PlatformGetInputState(window);
         
-        // Easter egg de Input DOD controlando render RHI de forma clean e modular
-        if (canino::IsKeyDown(state, canino::CANINO_KEY_SPACE)) { g += 0.01f; }
-        if (canino::IsKeyDown(state, canino::CANINO_KEY_D)) { r += 0.01f; }
-        if (canino::IsKeyDown(state, canino::CANINO_KEY_A)) { r -= 0.01f; }
-        if (r > 1.0f) r = 0.0f; else if (r < 0.0f) r = 1.0f;
-        if (g > 1.0f) g = 0.0f; else if (g < 0.0f) g = 1.0f;
+        // Em vez de varíaveis hardcoded, os Componentes puros sofrem Mutação através dos Sistemas de update
+        CameraTarget* cam = registry.GetComponent<CameraTarget>(player);
+
+        // Easter egg de Input DOD controlando entidade camera dinamicamente
+        if (cam) {
+            if (canino::IsKeyDown(state, canino::CANINO_KEY_SPACE)) { cam->g += 0.01f; }
+            if (canino::IsKeyDown(state, canino::CANINO_KEY_D)) { cam->r += 0.01f; }
+            if (canino::IsKeyDown(state, canino::CANINO_KEY_A)) { cam->r -= 0.01f; }
+            
+            if (cam->r > 1.0f) cam->r = 0.0f; else if (cam->r < 0.0f) cam->r = 1.0f;
+            if (cam->g > 1.0f) cam->g = 0.0f; else if (cam->g < 0.0f) cam->g = 1.0f;
+        }
 
         if (canino::IsKeyPressed(state, canino::CANINO_KEY_ESCAPE)) break;
 
         // ---------- RHI FRONT-END SIMULATION -----------
         canino::RHI_BeginFrame();
         
-        // Define Comando
-        canino::RenderCommand::SetClearColor(r, g, b, 1.0f);
+        if (cam) canino::RenderCommand::SetClearColor(cam->r, cam->g, cam->b, 1.0f);
         
         // Descarrega Comando submetido na Placa de Vídeo
         canino::RenderCommand::Clear();

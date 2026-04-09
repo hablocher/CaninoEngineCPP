@@ -14,6 +14,7 @@ int main() {
     if (!RunInputTests()) success = false;
     if (!RunMathTests()) success = false;
     if (!RunThreadingTests()) success = false;
+    if (!RunECSTests()) success = false;
 
     if (success) {
         std::cout << "\n\033[32m[PASSOU]\033[0m Todos os sistemas e endereços da Canino Engine testados com sucesso absoluto." << std::endl;

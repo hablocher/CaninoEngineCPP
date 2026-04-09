@@ -27,3 +27,4 @@ bool RunPlatformTests();
 bool RunInputTests();
 bool RunMathTests();
 bool RunThreadingTests();
+bool RunECSTests();
