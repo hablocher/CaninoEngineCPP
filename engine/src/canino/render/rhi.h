@@ -18,5 +18,7 @@ namespace canino {
         
         // Pura Submissao de bit-clearing pra VRAM
         CANINO_API void Clear();
+
+        CANINO_API void DrawQuad(float x, float y, float w, float h, float r, float g, float b);
     }
 }

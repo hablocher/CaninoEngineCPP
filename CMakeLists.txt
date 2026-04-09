@@ -39,5 +39,6 @@ include(CTest)
 enable_testing()
 
 add_subdirectory(engine)
-add_subdirectory(sandbox)
+# Pasta do aplicativo Demos (Demo1, Demo2, etc) que consome a engine
+add_subdirectory(demos)
 add_subdirectory(tests)

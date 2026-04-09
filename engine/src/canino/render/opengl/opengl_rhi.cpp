@@ -84,5 +84,18 @@ namespace RenderCommand {
     }
 }
 
+void RenderCommand::DrawQuad(float x, float y, float w, float h, float r, float g, float b) {
+#ifdef _WIN32
+    // C-Style imemdiate Mode GL 1.1 Embutido na API Nativa pra Sandboxing sujo via Hardware
+    glColor3f(r, g, b);
+    glBegin(GL_QUADS);
+        glVertex2f(x, y);
+        glVertex2f(x + w, y);
+        glVertex2f(x + w, y + h);
+        glVertex2f(x, y + h);
+    glEnd();
+#endif
+}
+
 }
 #endif
