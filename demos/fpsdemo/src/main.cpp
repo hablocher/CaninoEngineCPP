@@ -1,6 +1,7 @@
 #include <canino/core/core.h>
 #include <canino/platform/window.h>
 #include <canino/platform/input.h>
+#include <canino/core/config_parser.h>
 #include <canino/render/rhi.h>
 #include <canino/render/mesh_loader.h>
 #include <canino/math/math_ops.h>
@@ -34,6 +35,11 @@ int main() {
     
     canino::PlatformLockCursor(window, true);
     canino::RHI_Initialize(canino::PlatformGetNativeWindowHandle(window));
+
+    // ==== LER CONFIG INI ====
+    canino::ConfigParser::LoadFromFile("canino.ini");
+    bool invertMouseX = canino::ConfigParser::GetBool("InvertMouseX", false);
+    bool invertMouseY = canino::ConfigParser::GetBool("InvertMouseY", false);
 
     // Terreno Massivo
     TransformComponent floorTransform = { {0.0f, -0.5f, 0.0f}, {100.0f, 1.0f, 100.0f} };
@@ -84,8 +90,17 @@ int main() {
 
         // ====== 1. ROTINA DE MOUSE (QUAKE LOCK FPS) ======
         float mouseSensitivity = 0.003f;
-        g_Yaw -= input->MouseDeltaX * mouseSensitivity; // Movimento invés pra mapear Rotação LHS
-        g_Pitch -= input->MouseDeltaY * mouseSensitivity;
+        if (invertMouseX) {
+            g_Yaw += input->MouseDeltaX * mouseSensitivity;
+        } else {
+            g_Yaw -= input->MouseDeltaX * mouseSensitivity; // Movimento invés pra mapear Rotação LHS
+        }
+
+        if (invertMouseY) {
+            g_Pitch += input->MouseDeltaY * mouseSensitivity;
+        } else {
+            g_Pitch -= input->MouseDeltaY * mouseSensitivity;
+        }
 
         // Clamping agressivo de quebra de pescoço (+- 89 graus)
         if (g_Pitch > 1.55f) g_Pitch = 1.55f;

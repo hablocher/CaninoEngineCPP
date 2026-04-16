@@ -47,4 +47,13 @@ bool ConfigParser::GetString(const char* key, char* outBuffer, unsigned int buff
     return false;
 }
 
+bool ConfigParser::GetBool(const char* key, bool defaultValue) {
+    char buffer[16];
+    if (GetString(key, buffer, sizeof(buffer))) {
+        if (_stricmp(buffer, "true") == 0 || strcmp(buffer, "1") == 0) return true;
+        if (_stricmp(buffer, "false") == 0 || strcmp(buffer, "0") == 0) return false;
+    }
+    return defaultValue;
+}
+
 }

@@ -7,5 +7,6 @@ namespace canino {
     public:
         CANINO_API static void LoadFromFile(const char* filepath);
         CANINO_API static bool GetString(const char* key, char* outBuffer, unsigned int bufferSize);
+        CANINO_API static bool GetBool(const char* key, bool defaultValue = false);
     };
 }
