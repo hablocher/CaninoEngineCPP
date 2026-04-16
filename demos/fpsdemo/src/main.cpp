@@ -5,6 +5,7 @@
 #include <canino/render/mesh_loader.h>
 #include <canino/math/math_ops.h>
 #include <canino/ecs/ecs.h>
+#include <canino/physics/physics.h>
 #include <iostream>
 #include <vector>
 
@@ -58,6 +59,17 @@ int main() {
         gunMesh = canino::RenderCommand::CreateMesh(gunRaw.Vertices.data(), gunRaw.Vertices.size(), gunRaw.Indices.data(), gunRaw.Indices.size());
     }
 
+    // ==== CARREGA FISICAS NO UNIVERSO ====
+    std::vector<canino::AABB> worldColliders;
+    // O AABB do Chão (Floor é massivo para impedir queda no Limbo)
+    worldColliders.push_back(canino::physics::AABBFromTransform(floorTransform.position, floorTransform.scale));
+    
+    // O AABB dos Pilares de Pedra
+    for (const auto& p : pillarsT) {
+        worldColliders.push_back(canino::physics::AABBFromTransform(p.position, p.scale));
+    }
+
+
     // Lógica Física Hardcodada Direcional do Jogador
     canino::Vec3 eye = { 0.0f, 2.0f, 0.0f }; // Altura do Player
     PlayerComponent player = { 0.0f, false };
@@ -93,10 +105,12 @@ int main() {
 
         // ====== 2. WASD MOVEMENT LOGIC ======
         float currentSpeed = 0.025f; // Walk speed fixa FPS
-        if (canino::IsKeyDown(input, canino::CANINO_KEY_W)) eye = canino::math::Vec3Add(eye, canino::math::Vec3Mul(walkForward, currentSpeed));
-        if (canino::IsKeyDown(input, canino::CANINO_KEY_S)) eye = canino::math::Vec3Sub(eye, canino::math::Vec3Mul(walkForward, currentSpeed));
-        if (canino::IsKeyDown(input, canino::CANINO_KEY_D)) eye = canino::math::Vec3Add(eye, canino::math::Vec3Mul(right, currentSpeed));
-        if (canino::IsKeyDown(input, canino::CANINO_KEY_A)) eye = canino::math::Vec3Sub(eye, canino::math::Vec3Mul(right, currentSpeed));
+        canino::Vec3 proposedVelocity = {0,0,0};
+
+        if (canino::IsKeyDown(input, canino::CANINO_KEY_W)) proposedVelocity = canino::math::Vec3Add(proposedVelocity, canino::math::Vec3Mul(walkForward, currentSpeed));
+        if (canino::IsKeyDown(input, canino::CANINO_KEY_S)) proposedVelocity = canino::math::Vec3Sub(proposedVelocity, canino::math::Vec3Mul(walkForward, currentSpeed));
+        if (canino::IsKeyDown(input, canino::CANINO_KEY_D)) proposedVelocity = canino::math::Vec3Add(proposedVelocity, canino::math::Vec3Mul(right, currentSpeed));
+        if (canino::IsKeyDown(input, canino::CANINO_KEY_A)) proposedVelocity = canino::math::Vec3Sub(proposedVelocity, canino::math::Vec3Mul(right, currentSpeed));
 
         // JUMP AND GRAVITY PURE
         player.velocityY -= 0.003f; // Gravity Accel
@@ -105,16 +119,42 @@ int main() {
             player.isGrounded = false;
         }
 
-        eye.y += player.velocityY;
+        proposedVelocity.y = player.velocityY;
+        
+        // Aplicação do Novo Vetor Cinético na Posição Virtual para varrer o sweep
+        canino::Vec3 proposedEye = canino::math::Vec3Add(eye, proposedVelocity);
 
-        // Collision Check no Terreno Basico do 100m²
-        if (eye.y < 2.0f) { // Ground Level View
-            eye.y = 2.0f;
-            player.velocityY = 0.0f;
-            player.isGrounded = true;
-        } else {
-            player.isGrounded = false;
+        // O Player Body Hull Box
+        canino::Vec3 playerScale = { 0.6f, 1.8f, 0.6f };
+        canino::AABB playerHull = canino::physics::AABBFromTransform(proposedEye, playerScale);
+
+        // Resetamos grounded frame a frame pra ver se o MTV nos empurrou no Y positivo
+        player.isGrounded = false;
+
+        // ====== ENGINE COLISIONAL (AABB Resolve Loop) ======
+        for (const auto& wall : worldColliders) {
+            canino::CollisionHit hit = canino::physics::ResolveAABB(playerHull, wall);
+            if (hit.hasHit) {
+                // Sair da parede via Deslize Físico O(1) Minimum Translation Vector
+                proposedEye.x += hit.penetration.x;
+                proposedEye.y += hit.penetration.y;
+                proposedEye.z += hit.penetration.z;
+
+                // Ground Check se a força de devolução aponta pra cima (Resistência Normal da Física)
+                if (hit.penetration.y > 0.0f) {
+                    player.isGrounded = true;   // Pisou no chão
+                    player.velocityY = 0.0f;    // Zera inércia de queda!
+                } else if (hit.penetration.y < 0.0f) {
+                    player.velocityY = 0.0f;    // Bateu a cabeça no teto e perdeu forca cinetica
+                }
+
+                // Ajustamos o Hull pro proximo Collider não empurrar cumulativamente duas vezes a mais!
+                playerHull = canino::physics::AABBFromTransform(proposedEye, playerScale);
+            }
         }
+
+        // Commit da Posição Física validada e depurada por MTV
+        eye = proposedEye;
 
         // View Matrix
         canino::Mat4 view = canino::math::Mat4LookAt(eye, forward, up);
