@@ -7,7 +7,7 @@
 ## 🚀 Sobre o Projeto
 O grande objetivo da Canino Engine não é competir com monstros consolidados como Unreal ou Unity, mas sim atuar como uma base educacional extrema e hardcore de engenharia C++. Focada em quem quer compreender os relógios de ciclo-perfeito da CPU e como uma GPU conversa e consome ponteiros no nível mais baixo e nativo da API do Windows (Win32 & DirectX).  
 
-**Nossos Cânios Sagrados de Programação:**
+**Nossos Valores Sagrados de Programação:**
 - Não usamos/abusamos da programação Orientada a Objeto clássica C++ (Sistemas densos cheios de Polimorfismo Virtual e abstração são rejeitados).
 - Sem *Garbage Collection* amador.
 - **ZERO `new` OU `malloc` DURANTE A SIMULAÇÃO**: Alocações heap só acontecem no Boot. As estruturas devoram Buffers únicos da Memória RAM de maneira prévia e resolvem tudo estritamente no cache local via *Offset/Pointers* usando *Memory Arenas* durante a Frame-rate!
@@ -16,72 +16,71 @@ O grande objetivo da Canino Engine não é competir com monstros consolidados co
 
 ## 🔥 Principais Features & Arquitetura
 
-### 1. Memory Arenas (Zero-Allocation)
-Toda a memória é separada massivamente no início do escopo principal (`Upfront Allocation`). Componentes injetando alocadores unificados que evitam em 100% que as Listas Ligadas tradicionais matem e fragmentem os recursos do PC do usuário ou destruam O Cache do processador. 
+### 1. Sistema Matemático Base (SIMD & Alinhamento O(1))
+A fundação de todo o código! Construímos cálculos matemáticos matriciais `Mat4` implementados usando diretivas de CPU Intrínsecas da Intel (128-bits `__m128` Registers). Todo cálculo de Câmera (*LookAt, Rotate, Cross Product*) foi desenvolvido em conformidade restrita com *Row-Major memory layouts* para despachar para o Shader sem overhead.
 
-### 2. Entity Component System (ECS Baseado em Sparse Sets)
-Focado integralmente no Data-Oriented Design. Os dados das entidades não são trancados em encapsulamentos pesados como Classes GameObjects. Temos um ECS purista, armazenando as listas (`Transform`, `Physics`) de forma em pacotes de Cache Arrays Paralelos alinhados contíguos (Contiguous Blocks). 
+### 2. Motor Gráfico 3D (RHI DirectX 11) Avançado
+O RHI atual despacha ordens atômicas direto p/ a GPU.
+* **Separation of Concerns (CBO Splitting)**: Matrizes e Materiais usam Buffers de Constantes independentes para garantir ciclos de hardware ótimos. O `CBOMatrices` (Sloting b0) gerencia MVPs puristas enquanto o `CBOMaterials` (Sloting b1) administra Flags vetoriais e color settings sem truncar dados da GPU.
+* **Z-Buffer / Viewport**: Pipeline de renderização embutido para desenhar Profundidade Z.
+* **Wavefront Mesh Loading & Texturização**: Lê nativamente malhas geométricas complexas via Parser Nativo `OBJ` instanciando Vértices Indiceados diretamente para `D3D11_BIND_INDEX_BUFFER` e decodificando Bitmaps do disco (`stb`).
 
-### 3. Multi-Threading & Job System Puro (C++20)
-*Task Queues* assíncronas projetadas para escalabilidade. Disparamos jobs com forte paralelismo de dados controlados matematicamente pelos sub-módulos para distribuir ociosidades pesadas em Múltiplos Cores (Núcleos Físicos de Processador) travando os semáforos com `std::condition_variable`.
+### 3. Físca Matemática 3D de Atrito Sólido (AABB Collision)
+Módulo próprio de física `canino::physics`. O sistema mapeia o volume das massas no ambiente e soluciona intersseções extraindo subvetorialmente o **Minimum Translation Vector (MTV)**. Esse design matemático $O(1)$ recria perfeitamente o atrito "Wall Sliding" das paredes da engine do velho Quake de 1996 sem a necessidade complexa de bibliotecas de física colossais empacotadas artificialmente.
 
-### 4. Renderização 3D Direta (RHI Agnóstico)
-O Sub-sistema RHI (*Render Hardware Interface*) atua baseada numa V-Table (Tabela de Ponteiros de Função no velho estilo do C puro) preparada para receber injeção transparente de Vulkan, DX12 ou OpenGL.
-* **Backend Windows Focado em DirectX 11 (ativo)**: Implantações completas com Constant Buffers (CBO), Index/Vertex Arrays e Shaders programáveis de tempo de execução (`D3DCompiler`). Z-Buffer/Depth Stencil garantindo a oclusão das faces no Espaço 3D e Rasterização manual do Pipeline controlando Vertex Winding Order e Cullings pela placa de hardware!
-* **Matemática SSE/SIMD**: Uma biblioteca nativa customizada construindo matemática Matricial (`Mat4`), construída desde a raiz com intrínsicos Intel Registradores 128-bits `__m128`. Processando matrizes de *Perspective, Rotate, Translate, Identidade* no nível base e repassando em conformidade restrita com *Row-Major memory layouts* para dentro da HLSL.
+### 4. Leitor de Configurações Null-Alloc (`.ini`)
+Um Parser manual escrito num estilo C super-leve (`canino::ConfigParser`), que lê o `canino.ini` para carregar varíaveis e bifurcar caminhos durante carregamentos `LoadFromFile`. 
 
----
-
-## 🎮 Demos Incorporados
-
-Dentro do diretório `/demos/`, criamos escopos limpos isolados via Sandboxes compiladas e executáveis que consomem a Engine base como um ecossistema. Modifique-os livres de receios:
-
-1. **Demo 1**: Aplicação de Provas e Testes. Atesta e visualiza a submissão Paralela do ECS em junção de centenas de objetos.  
-2. **Demo 2**: A Ascensão Tridimensional! Um Sandbox consumindo primitivas nativas da GPU pra rotacionar um modelo cúbico AAA com dimensões base predefinidas perfeitamente (Raio Unitário Fixo), carregando Imagens como Textura Direta, com cálculos perfeitamente imunes à quebra de proporções Matrix/Perspective Frustum. Interativa usando Sistema Integrado de Keyboard Raw Input.
+### 5. Multi-Threading Job System & ECS
+Task Queues assíncronas travejadas por condition variables. Entidades `std::vector` (ECS Based) operadas não como classes com setters pesados, mas alocadas contiguamente e distribuídas na pipeline CPU usando *Help-Stealing Threads*.
 
 ---
 
-## 🛠 Tecnologias e Estaque
+## 🎮 O Ecossistema de Demos (Sandboxes)
 
-* **Linguagem**: C++20.
-* **Design/Compilação**: Módulo de Projetos Moderno (CMake modular de Multi-Targets). Modos Release rigorosos compilando com `-O3/-O2`.
-* **API de Interface Base**: Win32 OS (Capturas nativas dos Loops de Windows e Input Events `WM_KEYDOWN/UP`).
-* **Gráficos**: APIs Hardware Nativo DXGI/D3D11 e shaders embutidos puristas HLSL.
-* **Carregamento Textilar**: Assinado com `stb_image.h` puramente isolado para empurrar decodificação JPEGs pra GPU zero-overhead.
-* **Ferramenta de Criação IA**: Arquitetado por *Google AI Agents/Modelos LLMs* atuando inteiramente como codificador do framework e operário do Teclado mas respondendo à Direção Arquiteta exata e intencional imposta pelo Líder.
+A Engine orquestra suas capacidades através de subprojetos nativos prontos pra compilar situados na raiz `/demos/`:
+
+1. **FPS Demo (O Colosso)**: O Pináculo Atual do Projeto! Demo em Primeira Pessoa purista. 
+   - Lida com Física AABB em Gravidade Livre para Pulos, impedindo invasão dentro dos Pilares via Matemática. 
+   - Rotação matricial *Quake-Like Look FPS Lock* gerenciada por Mouse Deltas Raw (com funcionalidade ativada com parsing live do `InvertMouse X / Y` do arquivo `.ini`).
+   - Usa Cross Product pra caminhar no Terreno `Right/WalkForward` e imprime *Mesh HUD overlay* estático sobreposta por matrizes na camada de Projeção sem View.
+2. **Demo 1 (Sandbox de Estresse MULTI-CORE)**: Dispara instantaneamente `2000 Threads Jobs paralelos` computando física abstrata simultânea. Na etapa Render as structs estouram em O(1) transformando as posições virtuais em 2000 matrizes `Mat4` pintadas pela CPU usando `RenderCommand::DrawCube()`. 
+3. **Demo 2 (Giro Cúbico)**: Um cubo primitivo de Textura Estática de Renderização isolada comprovando Perspectiva matemática sã.
+4. **Texture Test**: Validador de testes QA (Automotive Unit Tests) estritamente usado pra estressar o compilador do DX contra corrupções de ponteiros C++!
 
 ---
 
-## 💻 Como Empacotar & Compilar (Build/CMake)
+## 💻 Como Compilar (Build/CMake)
 
-Como parte da doutrina "Mantenha o Build System limpo", esse projeto nunca sobe dependências do Visual Studio sujas na branch principal (`.nmake`, `.sln`, `.vcxproj`). Tudo é gerado fresquinho na máquina de quem baixa! Requer **CMake (v3.20+)** e as Bibliotecas do **Visual Studio 2022 C++**.
+Como parte da doutrina "Mantenha o Build System limpo", esse projeto não suja sua branch com setups temporários do host IDE local. Exige a instalação base do **CMake** na sua máquina além dos compiladores clássicos MSVC do Windows. 
 
-1. Git Clone este repositório no seu local predileto.
-2. Abra o Shell na pasta raiz `CaninoEngine`.
-3. Invoque o Gerador para orquestrar os Makefiles alvos para um ambiente em isolamento na pasta "Build":
+1. Git Clone este repositório.
+2. Abra o Shell (Powershell de preferência).
+3. Invoque a montagem nativa da máquina pela Engine Geradora:
    ```shell
    cmake -B build
    ```
-4. Recomende a Compilação do Linker/Engine nativa e as Sandboxes com o máximo de Otimização Estável de Debugging nativa: 
+4. Submeta a orquestração do Build invocando todas as bibliotecas de compêndio Linker e Subdemos na máxima potência disponível estriando a flag release C++ (-O2 equivalente) ou mantenho o conforto de Assertions Debug:
    ```shell
    cmake --build build --config DEBUG
    ```
-*(Se quiser ver o ECS batendo sua velocidade máxima O2 de otimização troque por `RELEASE`)*.
 
-> **Dicas para o CMake/Windows**: Esta Engine está programada para puxar o `d3d11.lib` localmente do Sistema. Para que compile nativo de primeira no Windows assegure que ao instalar o VS2022 o pacote básico "Windows 10/11 SDK C++ Desktop Development" esteja setado no *installer* da Microsoft.
+*(Certifique que seu Visual Studio / Windows SDK contém o Pack nativo Desktop C++).*
 
 ---
 
-## 🕹 Como Rodar (Run) os Demos
+## 🕹 Como Rodar (Run) o Jogo
 
-Se tudo construir perfeitamente, não caia no engano de rodar a raiz! O framework gera os executáveis binários perfeitamente prontos para dist num diretório especial agrupado da engine sem DLLs perdidas. É so arrancar a Sandbox principal:
+Em nome da facilidade e arquitetura limpa, o CMake proíbe DLLs soltas na pasta fonte! Todas as resoluções operam agrupadas em diretório destino.
+
+Basta entrar nas Demo Sandboxes prontas:
 
 ```shell
-.\build\bin\DEBUG\Demo2.exe
+.\build\bin\DEBUG\FPSDemo.exe
 ```
 
-**[ 🎮 Controlando a Demo 2 ]** 
-* Use os botões **`W`** e **`S`** para transacionar a Matriz Orbital do Eixo de Inclinação X (Pitch).
-* Use os botões **`A`** e **`D`** para orbitar os Graus de Movimentação do Eixo Lateral Y (Yaw).
-* Aperte com violência espaço: **`ESPAÇO`**. O Input acionará instantaneamente os ganchos da nossa Engine que assumem rotação em escala aleatória auto-guiada e ininterrupta da Matriz pro Shader sem input local. Batendo nela dinamicamente denovo transita para estado Parado e retoma suas ordens locais!
-* **`ESCAPE / ESC`** finalizará a Window e todas as Alocações massivas da Engine serão derrubadas via Graceful-Exit seguro antes do SO desalinhar.
+**[ 🎮 Controlando o FPS Demo ]** 
+* Mouse vira o Pescoço. (*Altere os Inverts em `canino.ini` e teste o Reload reativo*)
+* **`W, A, S, D`** Desliza e atrita com o Terreno livre numa velocidade fixa `proposedVelocity`.
+* **`ESPAÇO`**: Salta acionando aceleração de Y Invertido e sofre degradação em `player.velocityY` até interceptar um obstáculo superior e o código detectar O(1) a volta ao Status de _Grounded_.
+* Use **`ESCAPE (ESC)`** a qualquer segundo para anular violentamente o ECS do Cóptero Multithreading, Matar o Contexto do DirectX nativo em 0 bytes Leak, e Destruir a Janela Windows32 pela API limpa do SO. 
