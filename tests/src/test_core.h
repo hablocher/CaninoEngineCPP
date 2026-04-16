@@ -28,3 +28,4 @@ bool RunInputTests();
 bool RunMathTests();
 bool RunThreadingTests();
 bool RunECSTests();
+bool RunRHITests();

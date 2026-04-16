@@ -16,10 +16,13 @@
 
 namespace canino {
 
-    __declspec(align(16)) struct ConstantBufferData {
+    __declspec(align(16)) struct CBOMatrices {
         Mat4 MVP;
-        float SolidColor[4];
+    };
+
+    __declspec(align(16)) struct CBOMaterials {
         int UseTexture[4];
+        float SolidColor[4];
     };
 
     struct DX11Context {
@@ -37,7 +40,8 @@ namespace canino {
         ID3D11InputLayout* InputLayout = nullptr;
         
         ID3D11Buffer* VertexBuffer = nullptr;
-        ID3D11Buffer* ConstantBuffer = nullptr;
+        ID3D11Buffer* ConstantBuffer_Matrices = nullptr;
+        ID3D11Buffer* ConstantBuffer_Materials = nullptr;
 
         ID3D11SamplerState* SamplerState = nullptr;
         ID3D11RasterizerState* RasterizerState = nullptr;
@@ -57,10 +61,13 @@ namespace canino {
     static DX11Context* s_DX11Context = nullptr;
 
     const char* g_ShaderSource3D = R"(
-        cbuffer CBO : register(b0) {
+        cbuffer CBO_Matrices : register(b0) {
             matrix MVP;
-            float4 SolidColor;
+        };
+
+        cbuffer CBO_Materials : register(b1) {
             int4 UseTexture;
+            float4 SolidColor;
         };
 
         Texture2D t0 : register(t0);
@@ -85,9 +92,10 @@ namespace canino {
 
         float4 PSMain(PS_IN input) : SV_TARGET {
             if (UseTexture.x == 1) {
-                return t0.Sample(s0, input.UV);
+                float4 color = t0.Sample(s0, input.UV);
+                return float4(color.rgb, 1.0f);
             } else {
-                return SolidColor;
+                return float4(SolidColor.rgb, 1.0f);
             }
         }
     )";
@@ -144,11 +152,18 @@ namespace canino {
         s_DX11Context->Device->CreateDepthStencilState(&dsDesc, &s_DX11Context->DepthStencilState);
 
         // ======= SHADER COMPILATION ========
+        ID3DBlob* errBlob = nullptr;
         ID3DBlob* vsBlob = nullptr;
-        D3DCompile(g_ShaderSource3D, strlen(g_ShaderSource3D), nullptr, nullptr, nullptr, "VSMain", "vs_5_0", 0, 0, &vsBlob, nullptr);
-        
         ID3DBlob* psBlob = nullptr;
-        D3DCompile(g_ShaderSource3D, strlen(g_ShaderSource3D), nullptr, nullptr, nullptr, "PSMain", "ps_5_0", 0, 0, &psBlob, nullptr);
+        
+        HRESULT vr = D3DCompile(g_ShaderSource3D, strlen(g_ShaderSource3D), nullptr, nullptr, nullptr, "VSMain", "vs_4_0", 0, 0, &vsBlob, &errBlob);
+        if (FAILED(vr)) {
+            if (errBlob) std::cout << "[RHI FATAL ERROR] Vertex Shader fail: " << (char*)errBlob->GetBufferPointer() << std::endl;
+        }
+        HRESULT pr = D3DCompile(g_ShaderSource3D, strlen(g_ShaderSource3D), nullptr, nullptr, nullptr, "PSMain", "ps_4_0", 0, 0, &psBlob, &errBlob);
+        if (FAILED(pr)) {
+            if (errBlob) std::cout << "[RHI FATAL ERROR] Pixel Shader fail: " << (char*)errBlob->GetBufferPointer() << std::endl;
+        }
 
         s_DX11Context->Device->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, &s_DX11Context->VertexShader);
         s_DX11Context->Device->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &s_DX11Context->PixelShader);
@@ -187,8 +202,11 @@ namespace canino {
         s_DX11Context->Device->CreateBuffer(&vbd, &vinit, &s_DX11Context->VertexBuffer);
 
         // ======= CBO MVP --------
-        D3D11_BUFFER_DESC cbd = {}; cbd.Usage = D3D11_USAGE_DYNAMIC; cbd.ByteWidth = sizeof(ConstantBufferData); cbd.BindFlags = D3D11_BIND_CONSTANT_BUFFER; cbd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-        s_DX11Context->Device->CreateBuffer(&cbd, nullptr, &s_DX11Context->ConstantBuffer);
+        D3D11_BUFFER_DESC cbd0 = {}; cbd0.Usage = D3D11_USAGE_DYNAMIC; cbd0.ByteWidth = sizeof(CBOMatrices); cbd0.BindFlags = D3D11_BIND_CONSTANT_BUFFER; cbd0.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+        s_DX11Context->Device->CreateBuffer(&cbd0, nullptr, &s_DX11Context->ConstantBuffer_Matrices);
+
+        D3D11_BUFFER_DESC cbd1 = {}; cbd1.Usage = D3D11_USAGE_DYNAMIC; cbd1.ByteWidth = sizeof(CBOMaterials); cbd1.BindFlags = D3D11_BIND_CONSTANT_BUFFER; cbd1.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+        s_DX11Context->Device->CreateBuffer(&cbd1, nullptr, &s_DX11Context->ConstantBuffer_Materials);
 
         // ======= SAMPLER ========
         D3D11_SAMPLER_DESC sampDesc = {};
@@ -198,7 +216,14 @@ namespace canino {
         sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
         sampDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
         sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
-        s_DX11Context->Device->CreateSamplerState(&sampDesc, &s_DX11Context->SamplerState);
+        sampDesc.MaxAnisotropy = 1;
+        
+        HRESULT hr = s_DX11Context->Device->CreateSamplerState(&sampDesc, &s_DX11Context->SamplerState);
+        if (FAILED(hr)) {
+            std::cout << "[RHI FATAL ERROR] CreateSamplerState falhou com código: " << std::hex << hr << std::endl;
+        } else {
+            std::cout << "[RHI] SamplerState criado e vinculado!" << std::endl;
+        }
 
         // ======= RASTERIZER & VIEWPORT ========
         D3D11_RASTERIZER_DESC rastDesc = {};
@@ -220,7 +245,9 @@ namespace canino {
 
         UINT stride = sizeof(RenderCommand::Vertex3D); UINT offset = 0;
         s_DX11Context->DeviceContext->IASetVertexBuffers(0, 1, &s_DX11Context->VertexBuffer, &stride, &offset);
-        s_DX11Context->DeviceContext->VSSetConstantBuffers(0, 1, &s_DX11Context->ConstantBuffer);
+        s_DX11Context->DeviceContext->VSSetConstantBuffers(0, 1, &s_DX11Context->ConstantBuffer_Matrices);
+        s_DX11Context->DeviceContext->PSSetConstantBuffers(1, 1, &s_DX11Context->ConstantBuffer_Materials);
+
 
         std::cout << "[RHI] DirectX11 Engine 3D e Z-Buffer Bootados!" << std::endl;
         return true;
@@ -240,22 +267,35 @@ namespace canino {
         if (outH) *outH = tHeight;
 
         D3D11_TEXTURE2D_DESC texDesc = {};
-        texDesc.Width = tWidth; texDesc.Height = tHeight; texDesc.MipLevels = 1; texDesc.ArraySize = 1;
+        texDesc.Width = tWidth; texDesc.Height = tHeight; 
+        texDesc.MipLevels = 1; // Voltaremos ao padrão robusto linear
+        texDesc.ArraySize = 1;
         texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
         texDesc.SampleDesc.Count = 1; texDesc.Usage = D3D11_USAGE_DEFAULT;
         texDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
 
+        // O Segredo Negro do D3D11: Se o SlicePitch (DepthPitch) for 0, o Driver pode copiar ZERO bytes dependendo do Vendor!
         D3D11_SUBRESOURCE_DATA initData = {};
         initData.pSysMem = image;
         initData.SysMemPitch = tWidth * 4;
+        initData.SysMemSlicePitch = tWidth * tHeight * 4; // <--- O SALVADOR DO UNIVERSO
 
         ID3D11Texture2D* texture = nullptr;
         s_DX11Context->Device->CreateTexture2D(&texDesc, &initData, &texture);
 
         ID3D11ShaderResourceView* srv = nullptr;
         if (texture) {
-            s_DX11Context->Device->CreateShaderResourceView(texture, nullptr, &srv);
+            D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+            srvDesc.Format = texDesc.Format;
+            srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+            srvDesc.Texture2D.MostDetailedMip = 0;
+            srvDesc.Texture2D.MipLevels = 1; 
+            
+            HRESULT shr = s_DX11Context->Device->CreateShaderResourceView(texture, &srvDesc, &srv);
+            if (FAILED(shr)) std::cout << "[RHI FATAL] Criar ShaderResourceView falhou: " << std::hex << shr << std::endl;
             texture->Release();
+        } else {
+            std::cout << "[RHI FATAL] CreateTexture2D FALHOU! Texture estava NULL." << std::endl;
         }
 
         stbi_image_free(image);
@@ -306,26 +346,29 @@ namespace canino {
     static void DX11_DrawCube(const Mat4& mvp, void* textureId) {
         if (!s_DX11Context) return;
 
-        D3D11_MAPPED_SUBRESOURCE mapped;
-        if (SUCCEEDED(s_DX11Context->DeviceContext->Map(s_DX11Context->ConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped))) {
-            ConstantBufferData* data = (ConstantBufferData*)mapped.pData;
-            
-            // Transpose matrix manually CPU side since HLSL defaults to column_major internally
+        D3D11_MAPPED_SUBRESOURCE mapped0;
+        if (SUCCEEDED(s_DX11Context->DeviceContext->Map(s_DX11Context->ConstantBuffer_Matrices, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped0))) {
+            CBOMatrices* data0 = (CBOMatrices*)mapped0.pData;
             for(int i=0; i<4; ++i) {
                 for(int j=0; j<4; ++j) {
-                    data->MVP.m[i][j] = mvp.m[j][i];
+                    data0->MVP.m[i][j] = mvp.m[j][i];
                 }
             }
-            if (textureId) {
-                data->UseTexture[0] = 1;
-                data->SolidColor[0] = 1.0f; data->SolidColor[1] = 0.0f; data->SolidColor[2] = 0.0f; data->SolidColor[3] = 1.0f; 
-            } else {
-                // Failsafe for missing textures to avoid black squares
-                data->UseTexture[0] = 0;
-                data->SolidColor[0] = 1.0f; data->SolidColor[1] = 0.0f; data->SolidColor[2] = 1.0f; data->SolidColor[3] = 1.0f; // Magenta de erro
-            }
+            s_DX11Context->DeviceContext->Unmap(s_DX11Context->ConstantBuffer_Matrices, 0);
+        }
 
-            s_DX11Context->DeviceContext->Unmap(s_DX11Context->ConstantBuffer, 0);
+        D3D11_MAPPED_SUBRESOURCE mapped1;
+        if (SUCCEEDED(s_DX11Context->DeviceContext->Map(s_DX11Context->ConstantBuffer_Materials, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped1))) {
+            CBOMaterials* data1 = (CBOMaterials*)mapped1.pData;
+            memset(data1, 0, sizeof(CBOMaterials));
+            if (textureId) {
+                data1->UseTexture[0] = 1;
+                data1->SolidColor[0] = 1.0f; data1->SolidColor[1] = 1.0f; data1->SolidColor[2] = 1.0f; data1->SolidColor[3] = 1.0f;
+            } else {
+                data1->UseTexture[0] = 0;
+                data1->SolidColor[0] = 0.5f; data1->SolidColor[1] = 0.5f; data1->SolidColor[2] = 0.5f; data1->SolidColor[3] = 1.0f;
+            }
+            s_DX11Context->DeviceContext->Unmap(s_DX11Context->ConstantBuffer_Materials, 0);
         }
 
         // Texture Bind
@@ -346,17 +389,24 @@ namespace canino {
     static void DX11_DrawCubeSolid(const Mat4& mvp, float r, float g, float b) {
         if (!s_DX11Context) return;
 
-        D3D11_MAPPED_SUBRESOURCE mapped;
-        if (SUCCEEDED(s_DX11Context->DeviceContext->Map(s_DX11Context->ConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped))) {
-            ConstantBufferData* data = (ConstantBufferData*)mapped.pData;
+        D3D11_MAPPED_SUBRESOURCE mapped0;
+        if (SUCCEEDED(s_DX11Context->DeviceContext->Map(s_DX11Context->ConstantBuffer_Matrices, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped0))) {
+            CBOMatrices* data0 = (CBOMatrices*)mapped0.pData;
             for(int i=0; i<4; ++i) {
                 for(int j=0; j<4; ++j) {
-                    data->MVP.m[i][j] = mvp.m[j][i];
+                    data0->MVP.m[i][j] = mvp.m[j][i];
                 }
             }
-            data->SolidColor[0] = r; data->SolidColor[1] = g; data->SolidColor[2] = b; data->SolidColor[3] = 1.0f;
-            data->UseTexture[0] = 0;
-            s_DX11Context->DeviceContext->Unmap(s_DX11Context->ConstantBuffer, 0);
+            s_DX11Context->DeviceContext->Unmap(s_DX11Context->ConstantBuffer_Matrices, 0);
+        }
+
+        D3D11_MAPPED_SUBRESOURCE mapped1;
+        if (SUCCEEDED(s_DX11Context->DeviceContext->Map(s_DX11Context->ConstantBuffer_Materials, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped1))) {
+            CBOMaterials* data1 = (CBOMaterials*)mapped1.pData;
+            memset(data1, 0, sizeof(CBOMaterials));
+            data1->SolidColor[0] = r; data1->SolidColor[1] = g; data1->SolidColor[2] = b; data1->SolidColor[3] = 1.0f;
+            data1->UseTexture[0] = 0;
+            s_DX11Context->DeviceContext->Unmap(s_DX11Context->ConstantBuffer_Materials, 0);
         }
 
         // Re-bind do Cubo Global
@@ -402,23 +452,29 @@ namespace canino {
         if (!s_DX11Context || !meshHandle) return;
         DX11Context::NativeMesh* mesh = (DX11Context::NativeMesh*)meshHandle;
 
-        D3D11_MAPPED_SUBRESOURCE mapped;
-        if (SUCCEEDED(s_DX11Context->DeviceContext->Map(s_DX11Context->ConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped))) {
-            ConstantBufferData* data = (ConstantBufferData*)mapped.pData;
+        D3D11_MAPPED_SUBRESOURCE mapped0;
+        if (SUCCEEDED(s_DX11Context->DeviceContext->Map(s_DX11Context->ConstantBuffer_Matrices, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped0))) {
+            CBOMatrices* data0 = (CBOMatrices*)mapped0.pData;
             for(int i=0; i<4; ++i) {
                 for(int j=0; j<4; ++j) {
-                    data->MVP.m[i][j] = mvp.m[j][i];
+                    data0->MVP.m[i][j] = mvp.m[j][i];
                 }
             }
+            s_DX11Context->DeviceContext->Unmap(s_DX11Context->ConstantBuffer_Matrices, 0);
+        }
+
+        D3D11_MAPPED_SUBRESOURCE mapped1;
+        if (SUCCEEDED(s_DX11Context->DeviceContext->Map(s_DX11Context->ConstantBuffer_Materials, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped1))) {
+            CBOMaterials* data1 = (CBOMaterials*)mapped1.pData;
+            memset(data1, 0, sizeof(CBOMaterials));
             if (textureId) {
-                data->UseTexture[0] = 1;
-                // Preenche cor vermelha choque pro caso da Shader falhar o IF
-                data->SolidColor[0] = 1.0f; data->SolidColor[1] = 0.0f; data->SolidColor[2] = 0.0f; data->SolidColor[3] = 1.0f; 
+                data1->UseTexture[0] = 1;
+                data1->SolidColor[0] = 1.0f; data1->SolidColor[1] = 1.0f; data1->SolidColor[2] = 1.0f; data1->SolidColor[3] = 1.0f; 
             } else {
-                data->SolidColor[0] = 0.5f; data->SolidColor[1] = 0.5f; data->SolidColor[2] = 0.5f; data->SolidColor[3] = 1.0f;
-                data->UseTexture[0] = 0;
+                data1->SolidColor[0] = 0.5f; data1->SolidColor[1] = 0.5f; data1->SolidColor[2] = 0.5f; data1->SolidColor[3] = 1.0f;
+                data1->UseTexture[0] = 0;
             }
-            s_DX11Context->DeviceContext->Unmap(s_DX11Context->ConstantBuffer, 0);
+            s_DX11Context->DeviceContext->Unmap(s_DX11Context->ConstantBuffer_Materials, 0);
         }
 
         if (textureId) {
