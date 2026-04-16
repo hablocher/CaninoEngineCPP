@@ -124,7 +124,13 @@ int main() {
             SpriteComponent* sp = registry.GetComponent<SpriteComponent>(swarm[i]);
 
             if (tf && sp) {
-                canino::RenderCommand::DrawQuad(tf->Position.x, tf->Position.y, sp->Size, sp->Size, sp->Color.x, sp->Color.y, sp->Color.z);
+                // Adaptando do "DrawQuad" obsoleto pro novo Shader 3D de Cubos Sólidos (com Z achatado ou transformado em pequenos blocos 3D!)
+                canino::Mat4 model = canino::math::Mat4Scale(sp->Size, sp->Size, sp->Size);
+                model.m[3][0] = tf->Position.x;
+                model.m[3][1] = tf->Position.y;
+                model.m[3][2] = 0.5f; // Joga pra frente da câmera pra não ser clipado
+                
+                canino::RenderCommand::DrawCubeSolid(model, sp->Color.x, sp->Color.y, sp->Color.z);
             }
         }
         
