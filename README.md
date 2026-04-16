@@ -1,5 +1,7 @@
 # 🐺 Canino Engine
 
+*Leia em [Português](README.md) | [English](README_en.md)*
+
 **Canino Engine** é um motor gráfico/game engine 3D incrivelmente leve, arquitetado do zero e focado exclusivamente em **Data-Oriented Design (DOD)** e arquiteturas de memória **Zero-Allocation**. É um projeto idealizado e severamente arquitetado sob as fortes opiniões e direção técnica de **Hablocher**. O código fundacional, os algoritmos e a engenharia estrutural de baixo nível foram desenvolvidos através de colaboração intensa com Inteligência Artificial Avançada (Agentes da Google / LLMs).
 
 ---
